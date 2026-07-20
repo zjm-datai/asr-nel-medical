@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asr-nec-model"
+version = "0.1.0"
+description = "ASR named entity correction model."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "torch>=2.4",
+  "transformers>=4.44",
+  "soundfile>=0.12",
+  "librosa>=0.10",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+asr-nec-demo = "asr_nec_model.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
