@@ -1,0 +1,33 @@
+services:
+  ss-train:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime}
+    image: ${SS_IMAGE:-asr-nec-model:ss-pilot}
+    container_name: ${SS_CONTAINER_NAME:-ss-train}
+    gpus: all
+    shm_size: 8gb
+    working_dir: /workspace/asr-nec-model
+    environment:
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      WHISPER_MODEL: ${WHISPER_MODEL:-../weights/base.pt}
+      FEATURE_BATCH_SIZE: ${FEATURE_BATCH_SIZE:-16}
+      TRAIN_BATCH_SIZE: ${TRAIN_BATCH_SIZE:-32}
+      EVAL_BATCH_SIZE: ${EVAL_BATCH_SIZE:-64}
+      EPOCHS: ${EPOCHS:-20}
+      LEARNING_RATE: ${LEARNING_RATE:-1e-4}
+      NUM_WORKERS: ${NUM_WORKERS:-4}
+      PATIENCE: ${PATIENCE:-5}
+      AUTO_RESUME: ${AUTO_RESUME:-1}
+    volumes:
+      - ../data:/workspace/data
+      - ../weights:/workspace/weights:ro
+      - ../runs:/workspace/runs
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "3"

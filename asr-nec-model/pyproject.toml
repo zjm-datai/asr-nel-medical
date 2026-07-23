@@ -13,6 +13,9 @@ dependencies = [
   "transformers>=4.44",
   "soundfile>=0.12",
   "librosa>=0.10",
+  "pypinyin>=0.53",
+  "openai-whisper>=20250625",
+  "opencc-python-reimplemented>=0.1.7",
 ]
 
 [project.optional-dependencies]
@@ -28,4 +31,3 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
