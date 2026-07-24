@@ -1,7 +1,7 @@
 # Docker GPU 训练说明
 
-镜像基于 `nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04`，并在镜像内安装
-Python 3.11 与 CUDA 12.4 版 PyTorch。推荐使用 Dev Container 交互开发、调试和
+镜像基于 `nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04`，并通过 Anaconda 官方源
+安装 Python 3.11 Miniconda 与 CUDA 12.4 版 PyTorch。推荐使用 Dev Container 交互开发、调试和
 检查数据，使用 Docker Compose detached 模式运行正式训练。训练任务不依赖 VS Code
 会话，关闭编辑器或 SSH 后仍会继续。
 
@@ -69,7 +69,7 @@ CUDA_VISIBLE_DEVICES=1
 docker compose build ss-train
 ```
 
-首次构建会下载 CUDA devel 镜像、Miniforge、PyTorch 和项目依赖，体积为数 GB。
+首次构建会下载 CUDA devel 镜像、Miniconda、PyTorch 和项目依赖，体积为数 GB。
 检查镜像中的 CUDA：
 
 ```bash

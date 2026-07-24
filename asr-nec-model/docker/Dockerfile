@@ -3,6 +3,7 @@ FROM ${CUDA_BASE_IMAGE}
 
 ARG PYTHON_VERSION=3.11
 ARG PYTORCH_VERSION=2.6.0
+ARG MINICONDA_VERSION=py311_25.5.1-1
 ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -24,10 +25,10 @@ RUN case "${TARGETARCH:-amd64}" in \
         arm64) CONDA_ARCH=aarch64 ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL -o /tmp/miniforge.sh \
-        "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-${CONDA_ARCH}.sh" \
-    && bash /tmp/miniforge.sh -b -p /opt/conda \
-    && rm /tmp/miniforge.sh \
+    && curl -fsSL -o /tmp/miniconda.sh \
+        "https://repo.anaconda.com/miniconda/Miniconda3-${MINICONDA_VERSION}-Linux-${CONDA_ARCH}.sh" \
+    && bash /tmp/miniconda.sh -b -p /opt/conda \
+    && rm /tmp/miniconda.sh \
     && conda install -y "python=${PYTHON_VERSION}" pip \
     && conda clean -afy
 
