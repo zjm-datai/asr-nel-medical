@@ -8,6 +8,7 @@ services:
     image: asr-nec-demo:latest
     container_name: asr-nec-demo
     restart: unless-stopped
+    network_mode: host
     gpus: all
     shm_size: 4gb
     environment:
@@ -30,8 +31,6 @@ services:
       NEC_RUNS_DIR: "/workspace/runs"
       EXAMPLES_FILE: "/app/asr-nec-app/data/examples.json"
       EXAMPLES_AUDIO_DIR: "/workspace/data/speech_searcher/audio_full"
-    ports:
-      - "${API_PORT:-8016}:8016"
     volumes:
       - ../../data:/workspace/data:ro
       - ../../weights:/workspace/weights:ro

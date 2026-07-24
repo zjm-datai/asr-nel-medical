@@ -42,6 +42,8 @@ docker compose logs -f app
 The compose service mounts workspace-level `data`, `weights` and `runs`
 read-only. Demo history and uploaded audio live in the persistent `storage`
 volume. The application listens on port `8016` by default.
+Compose uses host networking because the 240 server's predefined Docker
+address pools are fully allocated.
 
 ## API
 
