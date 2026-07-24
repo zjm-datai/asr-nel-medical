@@ -8,6 +8,7 @@ services:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.11}
         PYTORCH_VERSION: ${PYTORCH_VERSION:-2.6.0}
         MINICONDA_VERSION: ${MINICONDA_VERSION:-py311_25.5.1-1}
+        PYPI_INDEX_URL: ${PYPI_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     image: ${SS_IMAGE:-asr-nec-model:ss-pilot}
     container_name: ${SS_CONTAINER_NAME:-ss-train}
     gpus: all

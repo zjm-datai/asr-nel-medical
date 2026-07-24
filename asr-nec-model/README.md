@@ -44,3 +44,14 @@ The generated text is cold-start material for recording or TTS. It is not an
 ASR transcript and must not be labeled as a real ASR error. All entities and
 clinical combinations remain `pending_expert_review` until reviewed by a TCM
 professional.
+
+Generate the complete TTS corpus with resumable per-file output. Compatible
+pilot files are hard-linked or copied into the separate full-corpus directory:
+
+```bash
+python scripts/generate_tts_full.py --plan-only
+python scripts/generate_tts_full.py --workers 3
+```
+
+The complete corpus is written under `../data/speech_searcher/audio_full` and
+contains 3,600 utterance WAV files plus 690 entity-reference WAV files.

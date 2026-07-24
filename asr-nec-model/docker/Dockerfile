@@ -5,6 +5,7 @@ ARG PYTHON_VERSION=3.11
 ARG PYTORCH_VERSION=2.6.0
 ARG MINICONDA_VERSION=py311_25.5.1-1
 ARG TARGETARCH
+ARG PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -36,6 +37,10 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install \
         "torch==${PYTORCH_VERSION}" \
         --index-url https://download.pytorch.org/whl/cu124
+
+ENV PIP_INDEX_URL=${PYPI_INDEX_URL} \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10
 
 WORKDIR /workspace/asr-nec-model
 
