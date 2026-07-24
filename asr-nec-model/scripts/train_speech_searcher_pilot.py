@@ -22,7 +22,7 @@ def read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=4096)
 def load_feature(path: str) -> torch.Tensor:
     return torch.load(path, map_location="cpu", weights_only=True).float()
 
@@ -195,8 +195,12 @@ def main() -> None:
     if args.max_train_pairs:
         train_rows = train_rows[: args.max_train_pairs]
     eval_rows = read_jsonl(args.data_dir / "ss_eval_pairs.jsonl")
+    dev_rows = [row for row in eval_rows if row["split"] == "dev"]
+    test_rows = [row for row in eval_rows if row["split"] == "test"]
+    if not dev_rows or not test_rows:
+        raise ValueError("evaluation pairs must contain both dev and test splits")
     train_set = PairViewDataset(train_rows, audio_to_feature, evaluation=False)
-    eval_set = PairViewDataset(eval_rows, audio_to_feature, evaluation=True)
+    dev_set = PairViewDataset(dev_rows, audio_to_feature, evaluation=True)
     train_loader = DataLoader(
         train_set,
         batch_size=args.batch_size,
@@ -206,8 +210,8 @@ def main() -> None:
         collate_fn=collate_pairs,
         persistent_workers=args.num_workers > 0,
     )
-    eval_loader = DataLoader(
-        eval_set,
+    dev_loader = DataLoader(
+        dev_set,
         batch_size=args.eval_batch_size,
         shuffle=False,
         num_workers=args.num_workers,
@@ -260,7 +264,7 @@ def main() -> None:
             scaler.update()
             total_loss += loss.item() * len(labels)
             total_examples += len(labels)
-        metrics = evaluate(model, eval_loader, eval_rows, device, amp_enabled, args.threshold)
+        metrics = evaluate(model, dev_loader, dev_rows, device, amp_enabled, args.threshold)
         epoch_result = {
             "epoch": epoch,
             "train_loss": round(total_loss / max(1, total_examples), 6),
@@ -292,6 +296,30 @@ def main() -> None:
         if patience_used >= args.patience:
             print(f"early stopping after {patience_used} epochs without dev Recall@5 improvement", flush=True)
             break
+
+    best_checkpoint = torch.load(args.output_dir / "best.pt", map_location=device, weights_only=False)
+    model.load_state_dict(best_checkpoint["model_state"])
+    test_set = PairViewDataset(test_rows, audio_to_feature, evaluation=True)
+    test_loader = DataLoader(
+        test_set,
+        batch_size=args.eval_batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=device.type == "cuda",
+        collate_fn=collate_pairs,
+        persistent_workers=args.num_workers > 0,
+    )
+    test_metrics = evaluate(model, test_loader, test_rows, device, amp_enabled, args.threshold)["test"]
+    final_metrics = {
+        "best_dev_recall_at_5": best_recall,
+        "best_epoch": best_checkpoint["epoch"],
+        "history": history,
+        "test_metrics": test_metrics,
+    }
+    (args.output_dir / "metrics.json").write_text(
+        json.dumps(final_metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    print(json.dumps({"best_epoch": best_checkpoint["epoch"], "test": test_metrics}, ensure_ascii=False), flush=True)
 
 
 if __name__ == "__main__":
