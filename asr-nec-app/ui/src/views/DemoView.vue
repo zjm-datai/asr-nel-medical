@@ -43,6 +43,15 @@ async function upload(file: File) {
 }
 
 async function startRecording() {
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    error.value = '浏览器仅允许在 HTTPS 页面使用麦克风，请通过安全地址访问'
+    return
+  }
+  if (typeof MediaRecorder === 'undefined') {
+    error.value = '当前浏览器不支持录音，请使用最新版 Chrome 或 Edge'
+    return
+  }
+
   try {
     stream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
     chunks.length = 0
@@ -56,7 +65,9 @@ async function startRecording() {
     recorder.value.start()
     recording.value = true
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '无法访问麦克风'
+    error.value = cause instanceof DOMException && cause.name === 'NotAllowedError'
+      ? '麦克风权限被拒绝，请在浏览器地址栏中允许麦克风访问'
+      : cause instanceof Error ? cause.message : '无法访问麦克风'
   }
 }
 
