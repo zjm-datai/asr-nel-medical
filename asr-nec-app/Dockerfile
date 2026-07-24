@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 
+ARG CUDA_BASE_IMAGE=nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
 FROM node:24-alpine AS frontend-builder
 
 WORKDIR /build/ui
@@ -9,7 +11,6 @@ COPY asr-nec-app/ui/ ./
 RUN npm run build
 
 
-ARG CUDA_BASE_IMAGE=nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 FROM ${CUDA_BASE_IMAGE} AS production
 
 ARG PYTHON_VERSION=3.11
