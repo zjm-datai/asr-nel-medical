@@ -55,3 +55,12 @@ python scripts/generate_tts_full.py --workers 3
 
 The complete corpus is written under `../data/speech_searcher/audio_full` and
 contains 3,600 utterance WAV files plus 690 entity-reference WAV files.
+
+Run full-corpus SpeechSearcher training with isolated features and checkpoints:
+
+```bash
+DATASET_MODE=full SEED=20260724 bash scripts/run_ss_training.sh
+```
+
+Full features are cached under `../data/speech_searcher/ss_features_full`, and
+checkpoints are written to `../runs/ss_full_seed_<seed>`.

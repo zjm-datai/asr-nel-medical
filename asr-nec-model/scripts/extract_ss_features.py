@@ -39,6 +39,8 @@ def load_audio(path: Path) -> tuple[torch.Tensor, int]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Cache frozen OpenAI Whisper encoder states for SS training.")
     parser.add_argument("--pilot-dir", type=Path, default=WORKSPACE_ROOT / "data" / "speech_searcher" / "audio_pilot")
+    parser.add_argument("--audio-dir", type=Path, help="Audio corpus directory; overrides --pilot-dir.")
+    parser.add_argument("--manifest-name", default="pilot_manifest.jsonl")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_FEATURE_OUTPUT)
     parser.add_argument("--model", default="base", help="OpenAI Whisper model name or local .pt checkpoint")
     parser.add_argument("--download-root", type=Path, default=Path.home() / ".cache" / "whisper")
@@ -47,12 +49,13 @@ def main() -> None:
     parser.add_argument("--limit", type=int, help="Smoke-test only; omit for the complete cache")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
+    audio_dir = args.audio_dir or args.pilot_dir
     if args.limit is not None and args.output_dir.resolve() == DEFAULT_FEATURE_OUTPUT.resolve():
         raise ValueError("--limit is a smoke-test option and requires a separate --output-dir")
 
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but torch.cuda.is_available() is false")
-    manifest = read_jsonl(args.pilot_dir / "pilot_manifest.jsonl")
+    manifest = read_jsonl(audio_dir / args.manifest_name)
     manifest.sort(key=lambda row: (row["kind"], row["source_id"]))
     if args.limit is not None:
         manifest = manifest[: args.limit]
@@ -86,7 +89,7 @@ def main() -> None:
         mels = []
         lengths = []
         for row in batch:
-            audio, encoder_frames = load_audio(args.pilot_dir / row["pilot_audio_path"])
+            audio, encoder_frames = load_audio(audio_dir / row["pilot_audio_path"])
             padded = whisper.pad_or_trim(audio)
             mel = whisper.log_mel_spectrogram(padded, n_mels=model.dims.n_mels)
             mels.append(mel)

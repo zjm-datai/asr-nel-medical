@@ -151,7 +151,13 @@ def evaluate(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train SpeechSearcher on cached Whisper states.")
-    parser.add_argument("--pilot-dir", type=Path, default=WORKSPACE_ROOT / "data" / "speech_searcher" / "audio_pilot")
+    parser.add_argument(
+        "--data-dir",
+        "--pilot-dir",
+        dest="data_dir",
+        type=Path,
+        default=WORKSPACE_ROOT / "data" / "speech_searcher" / "audio_pilot",
+    )
     parser.add_argument("--feature-dir", type=Path, default=WORKSPACE_ROOT / "data" / "speech_searcher" / "ss_features")
     parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "runs" / "ss_pilot")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -185,10 +191,10 @@ def main() -> None:
     audio_to_feature = {
         row["audio_path"]: args.feature_dir / row["feature_path"] for row in feature_rows
     }
-    train_rows = read_jsonl(args.pilot_dir / "ss_train_pairs.jsonl")
+    train_rows = read_jsonl(args.data_dir / "ss_train_pairs.jsonl")
     if args.max_train_pairs:
         train_rows = train_rows[: args.max_train_pairs]
-    eval_rows = read_jsonl(args.pilot_dir / "ss_eval_pairs.jsonl")
+    eval_rows = read_jsonl(args.data_dir / "ss_eval_pairs.jsonl")
     train_set = PairViewDataset(train_rows, audio_to_feature, evaluation=False)
     eval_set = PairViewDataset(eval_rows, audio_to_feature, evaluation=True)
     train_loader = DataLoader(
