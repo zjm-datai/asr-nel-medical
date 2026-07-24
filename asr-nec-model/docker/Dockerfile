@@ -29,7 +29,7 @@ RUN case "${TARGETARCH:-amd64}" in \
         "https://repo.anaconda.com/miniconda/Miniconda3-${MINICONDA_VERSION}-Linux-${CONDA_ARCH}.sh" \
     && bash /tmp/miniconda.sh -b -p /opt/conda \
     && rm /tmp/miniconda.sh \
-    && conda install -y "python=${PYTHON_VERSION}" pip \
+    && python -c "import sys; assert sys.version_info[:2] == tuple(map(int, '${PYTHON_VERSION}'.split('.')))" \
     && conda clean -afy
 
 RUN python -m pip install --upgrade pip \
