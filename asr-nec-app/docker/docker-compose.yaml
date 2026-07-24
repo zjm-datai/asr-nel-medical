@@ -1,0 +1,48 @@
+name: asr-nec-demo
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: asr-nec-app/Dockerfile
+    image: asr-nec-demo:latest
+    container_name: asr-nec-demo
+    restart: unless-stopped
+    gpus: all
+    shm_size: 4gb
+    environment:
+      API_HOST: "0.0.0.0"
+      API_PORT: "8016"
+      API_RELOAD: "false"
+      RUN_MIGRATIONS: "true"
+      LOG_LEVEL: "INFO"
+      DATABASE_URL: "sqlite:////app/storage/app.db"
+      STORAGE_DIR: "/app/storage"
+      UPLOAD_DIR: "/app/storage/uploads"
+      FRONTEND_DIST_DIR: "/app/asr-nec-app/ui/dist"
+      NEC_DEVICE: "cuda"
+      CUDA_VISIBLE_DEVICES: "${CUDA_VISIBLE_DEVICES:-0}"
+      WHISPER_MODEL_PATH: "/workspace/weights/base.pt"
+      SS_CHECKPOINT_PATH: "/workspace/runs/ss_full_seed_20260724/best.pt"
+      GL_CHECKPOINT_PATH: "/workspace/runs/gl_augmented_aligned_e5/best.pt"
+      NEC_DATA_DIR: "/workspace/data/speech_searcher"
+      NEC_FEATURE_DIR: "/workspace/data/speech_searcher/ss_features_full"
+      NEC_RUNS_DIR: "/workspace/runs"
+      EXAMPLES_FILE: "/app/asr-nec-app/data/examples.json"
+      EXAMPLES_AUDIO_DIR: "/workspace/data/speech_searcher/audio_full"
+    ports:
+      - "${API_PORT:-8016}:8016"
+    volumes:
+      - ../../data:/workspace/data:ro
+      - ../../weights:/workspace/weights:ro
+      - ../../runs:/workspace/runs:ro
+      - storage_data:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8016/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
+volumes:
+  storage_data:

@@ -4,3 +4,5 @@
 /runs/
 /tmp/
 /plan.md
+/.playwright-cli/
+/output/

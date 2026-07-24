@@ -1,0 +1,62 @@
+[
+  {
+    "id": "example_01",
+    "title": "特应性皮炎 · ss_00048",
+    "utterance_id": "ss_00048",
+    "domain": "atopic_dermatitis",
+    "audio_path": "utterances/test/ss_00048.wav",
+    "expected_asr_text": "上次医生说我的症刑是疲疑失运,还问我有没有用过精银花?",
+    "expected_corrected_text": "上次医生说我的症刑是脾虚湿蕴,还问我有没有用过金银花?",
+    "note": "疲疑失运 → 脾虚湿蕴；精银花 → 金银花"
+  },
+  {
+    "id": "example_02",
+    "title": "特应性皮炎 · ss_00070",
+    "utterance_id": "ss_00070",
+    "domain": "atopic_dermatitis",
+    "audio_path": "utterances/test/ss_00070.wav",
+    "expected_asr_text": "我确认一下,之前开的方计是当归、影子还是防风通盛散。",
+    "expected_corrected_text": "我确认一下,之前开的方计是当归饮子还是防风通圣散。",
+    "note": "当归、影子 → 当归饮子；防风通盛散 → 防风通圣散"
+  },
+  {
+    "id": "example_03",
+    "title": "特应性皮炎 · ss_00117",
+    "utterance_id": "ss_00117",
+    "domain": "atopic_dermatitis",
+    "audio_path": "utterances/test/ss_00117.wav",
+    "expected_asr_text": "我确认一下之前开的风机是龙胆泣干汤还是森林白属散",
+    "expected_corrected_text": "我确认一下之前开的风机是龙胆泻肝汤还是参苓白术散",
+    "note": "龙胆泣干汤 → 龙胆泻肝汤；森林白属散 → 参苓白术散"
+  },
+  {
+    "id": "example_04",
+    "title": "特应性皮炎 · ss_00171",
+    "utterance_id": "ss_00171",
+    "domain": "atopic_dermatitis",
+    "audio_path": "utterances/test/ss_00171.wav",
+    "expected_asr_text": "我确认一下,你以前用的是清画壳的松辱膏,还是地奈德辱膏。",
+    "expected_corrected_text": "我确认一下,你以前用的是氢化可的松乳膏,还是地奈德乳膏。",
+    "note": "清画壳的松辱膏 → 氢化可的松乳膏；地奈德辱膏 → 地奈德乳膏"
+  },
+  {
+    "id": "example_05",
+    "title": "中医脾胃病 · ss_01837",
+    "utterance_id": "ss_01837",
+    "domain": "spleen_stomach",
+    "audio_path": "utterances/test/ss_01837.wav",
+    "expected_asr_text": "上次兵律里写了皮卫虚弱和蛇子案,我想确认一下。",
+    "expected_corrected_text": "上次兵律里写了脾胃虚弱和舌紫暗,我想确认一下。",
+    "note": "皮卫虚弱 → 脾胃虚弱；蛇子案 → 舌紫暗"
+  },
+  {
+    "id": "example_06",
+    "title": "中医脾胃病 · ss_01854",
+    "utterance_id": "ss_01854",
+    "domain": "spleen_stomach",
+    "audio_path": "utterances/test/ss_01854.wav",
+    "expected_asr_text": "你刚才说的是拌下后铺汤还是复子里中完我需要确认具体方明",
+    "expected_corrected_text": "你刚才说的是半夏厚朴汤还是附子理中丸我需要确认具体方明",
+    "note": "复子里中完 → 附子理中丸；拌下后铺汤 → 半夏厚朴汤"
+  }
+]
