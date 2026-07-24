@@ -8,7 +8,6 @@ services:
     image: asr-nec-demo:latest
     container_name: asr-nec-demo
     restart: unless-stopped
-    network_mode: host
     gpus: all
     shm_size: 4gb
     environment:
@@ -42,6 +41,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 180s
+    networks:
+      - ai-base
 
 volumes:
   storage_data:
+
+networks:
+  ai-base:
+    external: true

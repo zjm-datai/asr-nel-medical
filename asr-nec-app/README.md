@@ -42,8 +42,9 @@ docker compose logs -f app
 The compose service mounts workspace-level `data`, `weights` and `runs`
 read-only. Demo history and uploaded audio live in the persistent `storage`
 volume. The application listens on port `8016` by default.
-Compose uses host networking because the 240 server's predefined Docker
-address pools are fully allocated.
+Compose joins the existing external `ai-base` network so Nginx Proxy Manager
+can reach the service at `http://asr-nec-demo:8016` without allocating another
+Docker subnet.
 
 ## API
 
