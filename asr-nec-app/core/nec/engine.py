@@ -49,6 +49,7 @@ class NecEngine:
         self.model: Any = None
         self.asr_decoder: Any = None
         self.tokenizer: Any = None
+        self.text_converter: Any = None
         self.searcher: Any = None
         self.surfaces: dict[str, dict[str, Any]] = {}
         self.entities: dict[str, dict[str, Any]] = {}
@@ -60,6 +61,7 @@ class NecEngine:
         import torch
         import whisper
         from asr_nec_model.models.searcher import EncodedSpeechSearcher
+        from opencc import OpenCC
         from whisper.tokenizer import get_tokenizer
 
         self._torch = torch
@@ -84,6 +86,7 @@ class NecEngine:
         self.model.decoder.load_state_dict(gl_checkpoint["decoder_state"])
         self.model.decoder.eval()
         self.tokenizer = get_tokenizer(multilingual=True, language="zh", task="transcribe")
+        self.text_converter = OpenCC("t2s")
 
         ss_checkpoint = torch.load(
             self.settings.ss_checkpoint_path,
@@ -206,6 +209,9 @@ class NecEngine:
                 self.model.decoder = gl_decoder
             asr_text = str(transcription["text"]).strip()
             timings["transcribe_ms"] = _elapsed_ms(started)
+        # Training data is normalized to simplified Chinese. Whisper may emit
+        # traditional characters, which otherwise break GL span matching.
+        asr_text = self.text_converter.convert(asr_text).strip()
 
         started = time.perf_counter()
         candidates = self._search(ss_feature, top_k, threshold)
