@@ -69,7 +69,7 @@ TRAIN_ARGS=(
   --device cuda
   --epochs "${EPOCHS:-20}"
   --batch-size "${TRAIN_BATCH_SIZE:-32}"
-  --eval-batch-size "${EVAL_BATCH_SIZE:-64}"
+  --eval-batch-size "${EVAL_BATCH_SIZE:-256}"
   --learning-rate "${LEARNING_RATE:-1e-4}"
   --num-workers "${NUM_WORKERS:-4}"
   --patience "${PATIENCE:-5}"
