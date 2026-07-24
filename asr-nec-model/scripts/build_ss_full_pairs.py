@@ -76,7 +76,9 @@ def main() -> None:
                     "utterance_audio_path": utterance_audio[utterance["utterance_id"]],
                     "surface_id": surface_id,
                     "entity_id": surface_id.removesuffix("_canonical"),
-                    "entity_audio_paths": paths,
+                    # Use the fixed training-side yinyao reference for strict
+                    # cross-speaker evaluation. Training still rotates all views.
+                    "entity_audio_paths": paths[:1],
                     "label": int(surface_id in target_surfaces),
                     "pair_type": "full_candidate_evaluation",
                     "split": utterance["split"],
@@ -96,7 +98,9 @@ def main() -> None:
         "eval_positive_count": sum(row["label"] for row in eval_rows),
         "eval_negative_count": sum(not row["label"] for row in eval_rows),
         "eval_split_counts": dict(sorted(Counter(row["split"] for row in eval_rows).items())),
-        "entity_audio_views_per_surface": 3,
+        "train_entity_audio_views_per_surface": 3,
+        "eval_entity_audio_views_per_surface": 1,
+        "eval_entity_reference_voice": "yinyao",
         "train_source_pair_manifest": "ss_pairs.jsonl",
         "evaluation_scope": "all_candidates_per_utterance",
     }
