@@ -1,0 +1,56 @@
+{
+  "name": "asr-nec-gpu-dev",
+  "build": {
+    "dockerfile": "../docker/Dockerfile",
+    "context": "..",
+    "args": {
+      "CUDA_BASE_IMAGE": "nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04",
+      "PYTHON_VERSION": "3.11",
+      "PYTORCH_VERSION": "2.6.0"
+    }
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/asr-nec-model,type=bind",
+  "workspaceFolder": "/workspace/asr-nec-model",
+  "runArgs": [
+    "--gpus=all",
+    "--shm-size=16g"
+  ],
+  "overrideCommand": true,
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "PYTHONPATH": "/workspace/asr-nec-model/src",
+    "HF_HOME": "/root/.cache/huggingface",
+    "TRANSFORMERS_CACHE": "/root/.cache/huggingface/transformers",
+    "WHISPER_MODEL": "/workspace/weights/base.pt"
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/../data,target=/workspace/data,type=bind",
+    "source=${localWorkspaceFolder}/../weights,target=/workspace/weights,type=bind",
+    "source=${localWorkspaceFolder}/../runs,target=/workspace/runs,type=bind",
+    "source=${localWorkspaceFolder}/../tmp,target=/workspace/tmp,type=bind",
+    "source=asr-nec-hf-cache,target=/root/.cache/huggingface,type=volume",
+    "source=asr-nec-pip-cache,target=/root/.cache/pip,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/conda/bin/python",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": [
+          "tests"
+        ]
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "root"
+}

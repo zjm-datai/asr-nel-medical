@@ -18,6 +18,11 @@ workspace-level directories.
 For detached GPU training in Docker, see `DOCKER_TRAINING.md` and start the
 Compose service with `docker compose up -d ss-train`.
 
+For interactive GPU development on a server, open this repository in VS Code
+and use `Dev Containers: Reopen in Container`. The configuration mounts the
+workspace-level `data`, `weights`, `runs`, and `tmp` directories alongside the
+code at `/workspace/asr-nec-model`.
+
 ## Quick start
 
 ```bash

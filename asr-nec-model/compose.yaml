@@ -4,7 +4,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime}
+        CUDA_BASE_IMAGE: ${CUDA_BASE_IMAGE:-nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04}
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.11}
+        PYTORCH_VERSION: ${PYTORCH_VERSION:-2.6.0}
     image: ${SS_IMAGE:-asr-nec-model:ss-pilot}
     container_name: ${SS_CONTAINER_NAME:-ss-train}
     gpus: all

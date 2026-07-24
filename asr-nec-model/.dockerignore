@@ -5,6 +5,7 @@
 .mypy_cache
 .ruff_cache
 .vscode
+.devcontainer
 __pycache__
 *.pyc
 *.pyo

@@ -1,8 +1,9 @@
 # Docker GPU 训练说明
 
-推荐使用 Docker Compose 以 detached 模式运行 SpeechSearcher 训练。Dev Container
-适合交互开发，但训练任务的生命周期可能受到 VS Code 会话影响，因此不作为正式
-训练入口。
+镜像基于 `nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04`，并在镜像内安装
+Python 3.11 与 CUDA 12.4 版 PyTorch。推荐使用 Dev Container 交互开发、调试和
+检查数据，使用 Docker Compose detached 模式运行正式训练。训练任务不依赖 VS Code
+会话，关闭编辑器或 SSH 后仍会继续。
 
 ## 目录结构
 
@@ -32,7 +33,7 @@ docker compose version
 验证 NVIDIA Container Toolkit：
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 ```
 
 这条命令必须在容器内显示 GPU。若提示找不到 GPU 或 runtime，应先让管理员安装
@@ -68,17 +69,60 @@ CUDA_VISIBLE_DEVICES=1
 docker compose build ss-train
 ```
 
-首次构建会下载约数 GB 的 PyTorch CUDA 基础镜像。检查镜像中的 CUDA：
+首次构建会下载 CUDA devel 镜像、Miniforge、PyTorch 和项目依赖，体积为数 GB。
+检查镜像中的 CUDA：
 
 ```bash
 docker compose run --rm ss-train python -c \
   "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
 ```
 
-如果基础镜像的 CUDA 版本高于宿主机驱动支持范围，在 `.env` 中替换
-`PYTORCH_IMAGE`，然后重新构建。例如使用可用的 CUDA 12.4 PyTorch runtime 标签。
+宿主机不需要安装 CUDA Toolkit，但 NVIDIA 驱动必须支持 CUDA 12.4。项目默认固定
+`CUDA_BASE_IMAGE=nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04` 和 CUDA 12.4 的
+PyTorch wheel；不要只修改其中一个版本。
 
-## 4. 后台启动
+## 4. 使用 VS Code Dev Container
+
+服务器目录应保持为：
+
+```text
+workspace/
+├── asr-nec-model/
+├── data/
+├── weights/
+├── runs/
+└── tmp/
+```
+
+首次使用前在服务器执行：
+
+```bash
+cd /path/to/workspace/asr-nec-model
+mkdir -p ../data ../weights ../runs ../tmp
+code .
+```
+
+在 VS Code 中安装 `Dev Containers` 扩展，然后执行命令面板中的
+`Dev Containers: Reopen in Container`。配置会把当前代码目录挂载到
+`/workspace/asr-nec-model`，并把四个同级目录挂载到 `/workspace` 下。进入后验证：
+
+```bash
+python -c "import torch; print(torch.__version__, torch.version.cuda); print(torch.cuda.get_device_name(0))"
+pytest -q
+ls -lh /workspace/weights/base.pt
+```
+
+Dev Container 的 `overrideCommand` 为 `true`，进入容器不会自动开始训练。需要交互式
+启动时执行：
+
+```bash
+bash scripts/run_ss_training.sh
+```
+
+长时间训练仍建议退出 Dev Container 后，在服务器宿主机使用下一节的 detached
+Compose 命令。
+
+## 5. 后台启动
 
 ```bash
 docker compose up -d ss-train
@@ -92,7 +136,7 @@ docker compose up -d ss-train
 4. 每个 epoch 评估 Recall@1/5/10；
 5. 持久化最佳和最后 checkpoint。
 
-## 5. 监控
+## 6. 监控
 
 ```bash
 docker compose ps -a
@@ -117,7 +161,7 @@ watch -n 2 nvidia-smi
 容器状态为 `Exited (0)` 表示训练正常结束，不表示失败。查看最终日志确认
 `SpeechSearcher container job completed`。
 
-## 6. 停止与续训
+## 7. 停止与续训
 
 优雅停止：
 
@@ -142,19 +186,19 @@ AUTO_RESUME=1
 
 然后启动同一个 Compose 服务。
 
-## 7. 开始全新实验
+## 8. 开始全新实验
 
 不要在旧 checkpoint 上设置 `AUTO_RESUME=0`后直接覆盖同一个输出目录。建议先把
 旧结果移动到新的实验目录，或修改 Compose/启动脚本中的 `RUN_DIR`。当前先导实验
 只维护一个 `runs/ss_pilot`目录。
 
-## 8. 常用故障检查
+## 9. 常用故障检查
 
 容器看不到 GPU：
 
 ```bash
 docker info | grep -i runtime
-docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 ```
 
 查看退出码：
