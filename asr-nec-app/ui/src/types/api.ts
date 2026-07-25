@@ -18,6 +18,7 @@ export interface Correction {
   source: 'mic' | 'upload' | 'example'
   audio_url: string
   duration_seconds: number
+  asr_provider: 'audio_api' | 'local_whisper' | 'manual'
   asr_text: string
   corrected_text: string
   top_k: number

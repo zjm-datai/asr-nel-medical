@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import uuid
 from pathlib import Path
@@ -10,15 +11,18 @@ from sqlmodel import Session
 from configs.base import Settings
 from core.nec.engine import NecEngine
 from models.entities import Correction
+from services.audio_api_transcriber import AudioApiTranscriber
 from services.examples_service import get_example
 
 AUDIO_SUFFIXES = {".wav", ".mp3", ".m4a", ".webm", ".ogg", ".flac", ".opus"}
+logger = logging.getLogger(__name__)
 
 
 def run_correction(
     session: Session,
     settings: Settings,
     engine: NecEngine,
+    transcriber: AudioApiTranscriber,
     *,
     file_bytes: bytes | None,
     filename: str,
@@ -48,14 +52,45 @@ def run_correction(
         stored_path.write_bytes(file_bytes)
         audio_path = stored_path
 
+    correction_id = uuid.uuid4().hex
+    asr_text: str | None = None
+    asr_provider = "local_whisper"
+    external_asr_ms: float | None = None
     try:
-        result = engine.correct_audio(audio_path, top_k=top_k, threshold=threshold)
+        transcription = transcriber.transcribe(audio_path, correction_id)
+        if transcription is not None:
+            asr_text = transcription.text
+            external_asr_ms = transcription.elapsed_ms
+            asr_provider = "audio_api"
+    except Exception as exc:
+        logger.exception("audio_api transcription failed; falling back to Whisper")
+        if not settings.audio_api_fallback_to_whisper:
+            stored_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=503, detail=f"audio_api transcription failed: {exc}"
+            ) from exc
+
+    try:
+        result = engine.correct_audio(
+            audio_path,
+            top_k=top_k,
+            threshold=threshold,
+            asr_text=asr_text,
+        )
     except RuntimeError as exc:
         stored_path.unlink(missing_ok=True)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    if external_asr_ms is not None:
+        result["timings"]["transcribe_ms"] = external_asr_ms
+        result["timings"]["total_ms"] = round(
+            result["timings"].get("total_ms", 0.0) + external_asr_ms, 1
+        )
+
     correction = Correction(
+        id=correction_id,
         source=source,
+        asr_provider=asr_provider,
         asr_text=result["asr_text"],
         corrected_text=result["corrected_text"],
         candidates=result["candidates"],
@@ -101,6 +136,7 @@ def rerun_correction(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     correction.asr_text = result["asr_text"]
+    correction.asr_provider = "manual"
     correction.corrected_text = result["corrected_text"]
     correction.candidates = result["candidates"]
     correction.timings = result["timings"]

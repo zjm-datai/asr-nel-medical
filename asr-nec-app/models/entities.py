@@ -25,6 +25,7 @@ class Correction(SQLModel, table=True):
     audio_path: str = Field(default="", max_length=1000)
     audio_url: str = Field(default="", max_length=1000)
     duration_seconds: float = Field(default=0.0)
+    asr_provider: str = Field(default="local_whisper", max_length=32)
     asr_text: str = Field(default="")
     corrected_text: str = Field(default="")
     top_k: int = Field(default=5)

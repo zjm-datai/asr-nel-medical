@@ -127,7 +127,7 @@ function rerun() {
         <div v-else class="w-full space-y-3">
           <div class="flex items-center justify-between"><h2 class="panel-title">处理链路</h2><Badge :tone="changed ? 'success' : 'neutral'">{{ changed ? '已纠错' : '无需修改' }}</Badge></div>
           <div class="pipeline">
-            <div><span>1</span><strong>ASR</strong><small>{{ result.timings.transcribe_ms?.toFixed(0) || '—' }} ms</small></div>
+            <div><span>1</span><strong>ASR</strong><small>{{ result.asr_provider }} · {{ result.timings.transcribe_ms?.toFixed(0) || '—' }} ms</small></div>
             <i></i><div><span>2</span><strong>SS 检索</strong><small>{{ result.timings.search_ms?.toFixed(0) || '—' }} ms</small></div>
             <i></i><div><span>3</span><strong>GL 标注</strong><small>{{ result.timings.label_ms?.toFixed(0) || '—' }} ms</small></div>
           </div>
@@ -141,7 +141,7 @@ function rerun() {
       <section class="panel overflow-hidden">
         <div class="border-b p-4"><div class="flex flex-wrap items-center justify-between gap-3"><h2 class="panel-title">识别与纠错结果</h2><Button size="sm" variant="secondary" :disabled="loading || editedText.trim() === result.asr_text" @click="rerun"><RotateCcw class="h-3.5 w-3.5" />重新运行 SS + GL</Button></div></div>
         <div class="grid divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <div class="p-4"><label class="result-label">ASR 原文（可编辑）</label><textarea v-model="editedText" class="result-editor" rows="4" /></div>
+          <div class="p-4"><label class="result-label">ASR 原文（{{ result.asr_provider }}，可编辑）</label><textarea v-model="editedText" class="result-editor" rows="4" /></div>
           <div class="p-4"><label class="result-label">纠错结果</label><div class="result-copy" :class="changed && 'result-copy-changed'">{{ result.corrected_text }}</div></div>
         </div>
       </section>

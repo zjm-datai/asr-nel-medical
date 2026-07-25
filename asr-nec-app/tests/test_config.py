@@ -9,6 +9,9 @@ def test_settings_defaults() -> None:
     assert settings.api_port == 8016
     assert settings.default_top_k == 5
     assert settings.default_threshold == 0.3
+    assert settings.audio_api_asr_enabled is False
+    assert settings.audio_api_url.endswith("/audio/transcription")
+    assert settings.audio_api_fallback_to_whisper is True
     assert settings.nec_skip_model_load is True
     assert settings.ss_checkpoint_path.name == "best.pt"
     assert settings.gl_checkpoint_path.parent.name == "gl_augmented_aligned_e5"

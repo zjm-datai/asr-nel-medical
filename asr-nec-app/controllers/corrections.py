@@ -16,7 +16,8 @@ from models.schemas import (
     RerunRequest,
 )
 from services import correction_service, history_service
-from services.dependencies import get_engine
+from services.audio_api_transcriber import AudioApiTranscriber
+from services.dependencies import get_audio_transcriber, get_engine
 
 router = APIRouter(prefix="/api/corrections", tags=["corrections"])
 
@@ -28,6 +29,7 @@ def to_read(correction: Correction) -> CorrectionRead:
         source=correction.source,
         audio_url=correction.audio_url,
         duration_seconds=correction.duration_seconds,
+        asr_provider=correction.asr_provider,
         asr_text=correction.asr_text,
         corrected_text=correction.corrected_text,
         top_k=correction.top_k,
@@ -47,6 +49,7 @@ def create_correction(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
     engine: NecEngine = Depends(get_engine),
+    transcriber: AudioApiTranscriber = Depends(get_audio_transcriber),
 ) -> CorrectionRead:
     file_bytes: bytes | None = None
     filename = "audio.wav"
@@ -57,6 +60,7 @@ def create_correction(
         session,
         settings,
         engine,
+        transcriber,
         file_bytes=file_bytes,
         filename=filename,
         example_id=example_id,

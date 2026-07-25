@@ -34,6 +34,7 @@ class CorrectionRead(BaseModel):
     source: str
     audio_url: str
     duration_seconds: float
+    asr_provider: str
     asr_text: str
     corrected_text: str
     top_k: int

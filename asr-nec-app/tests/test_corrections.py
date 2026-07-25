@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
 
-from services.dependencies import get_engine
+from services.audio_api_transcriber import TranscriptionResult
+from services.dependencies import get_audio_transcriber, get_engine
 from tests.conftest import TEST_ROOT
 
 
@@ -39,6 +40,16 @@ class FakeEngine:
         }
 
 
+class FakeTranscriber:
+    def transcribe(self, audio_path, conversation_id):
+        return TranscriptionResult("我想配点太子参调理", 8.5)
+
+
+class FailingTranscriber:
+    def transcribe(self, audio_path, conversation_id):
+        raise RuntimeError("audio_api unavailable")
+
+
 @pytest.fixture()
 def client() -> TestClient:
     from app import create_app
@@ -47,6 +58,7 @@ def client() -> TestClient:
     SQLModel.metadata.create_all(ext_database.engine)
     app = create_app()
     app.dependency_overrides[get_engine] = lambda: FakeEngine()
+    app.dependency_overrides[get_audio_transcriber] = lambda: FakeTranscriber()
     return TestClient(app)
 
 
@@ -58,6 +70,7 @@ def test_full_correction_flow(client: TestClient) -> None:
     )
     assert response.status_code == 200
     payload = response.json()
+    assert payload["asr_provider"] == "audio_api"
     assert payload["asr_text"] == "我想配点太子参调理"
     assert payload["corrected_text"] == "我想配点人参调理"
     assert payload["candidates"][0]["action"] == "replace"
@@ -68,6 +81,7 @@ def test_full_correction_flow(client: TestClient) -> None:
         json={"asr_text": "改过的文本里有太子参"},
     )
     assert rerun.status_code == 200
+    assert rerun.json()["asr_provider"] == "manual"
     assert rerun.json()["asr_text"] == "改过的文本里有太子参"
 
     listing = client.get("/api/corrections")
@@ -118,3 +132,14 @@ def test_example_correction_flow(client: TestClient) -> None:
 def test_missing_audio_is_rejected(client: TestClient) -> None:
     response = client.post("/api/corrections", data={})
     assert response.status_code == 400
+
+
+def test_audio_api_failure_falls_back_to_whisper(client: TestClient) -> None:
+    client.app.dependency_overrides[get_audio_transcriber] = lambda: FailingTranscriber()
+    response = client.post(
+        "/api/corrections",
+        files={"file": ("sample.wav", b"fake-wav-bytes", "audio/wav")},
+    )
+    assert response.status_code == 200
+    assert response.json()["asr_provider"] == "local_whisper"
+    assert response.json()["asr_text"] == "我想配点太子参调理"

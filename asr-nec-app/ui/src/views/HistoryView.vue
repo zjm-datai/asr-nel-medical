@@ -33,7 +33,7 @@ onMounted(load)
       <section v-if="selected" class="panel p-4 sm:p-5">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 class="panel-title">推理详情</h2><p class="mt-1 text-xs text-muted-foreground">{{ selected.id }}</p></div><Badge :tone="selected.asr_text !== selected.corrected_text ? 'success' : 'neutral'">{{ selected.asr_text !== selected.corrected_text ? '已纠错' : '无需修改' }}</Badge></div>
         <audio class="w-full" controls :src="apiUrl(selected.audio_url)"></audio>
-        <dl class="mt-5 space-y-4"><div><dt>ASR 原文</dt><dd>{{ selected.asr_text }}</dd></div><div><dt>纠错结果</dt><dd class="text-emerald-800">{{ selected.corrected_text }}</dd></div></dl>
+        <dl class="mt-5 space-y-4"><div><dt>ASR 原文（{{ selected.asr_provider }}）</dt><dd>{{ selected.asr_text }}</dd></div><div><dt>纠错结果</dt><dd class="text-emerald-800">{{ selected.corrected_text }}</dd></div></dl>
         <div class="mt-5 border-t pt-4"><h3 class="text-xs font-semibold text-muted-foreground">候选判定</h3><div class="mt-3 space-y-2"><div v-for="candidate in selected.candidates" :key="candidate.surface_id" class="flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2"><span class="min-w-0 truncate text-sm font-semibold">{{ candidate.surface_text }}</span><span class="flex items-center gap-2"><small class="font-mono text-muted-foreground">{{ (candidate.score * 100).toFixed(1) }}%</small><Badge :tone="candidate.action === 'replace' ? 'success' : 'neutral'">{{ candidate.action }}</Badge></span></div></div></div>
       </section>
     </div>

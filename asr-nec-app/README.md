@@ -46,6 +46,13 @@ Compose joins the existing external `ai-base` network so Nginx Proxy Manager
 can reach the service at `http://asr-nec-demo:8016` without allocating another
 Docker subnet.
 
+Production transcription uses the existing `audio_server` service on
+`ai-base`. The uploaded audio is normalized to 16 kHz mono WAV for
+`POST /audio/transcription`; its text is passed into SS + GL while the same
+original audio is encoded locally. Set `AUDIO_API_ASR_ENABLED=false` to use
+local Whisper transcription only. When the external service fails,
+`AUDIO_API_FALLBACK_TO_WHISPER=true` keeps the demo available.
+
 ## API
 
 - `GET /api/health`: database and model status

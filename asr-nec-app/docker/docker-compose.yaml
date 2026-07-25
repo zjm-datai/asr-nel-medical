@@ -30,6 +30,11 @@ services:
       NEC_RUNS_DIR: "/workspace/runs"
       EXAMPLES_FILE: "/app/asr-nec-app/data/examples.json"
       EXAMPLES_AUDIO_DIR: "/workspace/data/speech_searcher/audio_full"
+      AUDIO_API_ASR_ENABLED: "true"
+      AUDIO_API_URL: "http://audio_server:8081/audio/transcription"
+      AUDIO_API_ORGANIZE_CODE: "asrnec"
+      AUDIO_API_TIMEOUT_SECONDS: "90"
+      AUDIO_API_FALLBACK_TO_WHISPER: "true"
     volumes:
       - ../../data:/workspace/data:ro
       - ../../weights:/workspace/weights:ro

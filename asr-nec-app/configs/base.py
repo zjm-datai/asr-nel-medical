@@ -61,6 +61,25 @@ class StorageSettings(BaseSettings):
     )
 
 
+class AsrSettings(BaseSettings):
+    audio_api_asr_enabled: bool = Field(
+        default=False, validation_alias="AUDIO_API_ASR_ENABLED"
+    )
+    audio_api_url: str = Field(
+        default="http://audio_server:8081/audio/transcription",
+        validation_alias="AUDIO_API_URL",
+    )
+    audio_api_organize_code: str = Field(
+        default="asrnec", validation_alias="AUDIO_API_ORGANIZE_CODE"
+    )
+    audio_api_timeout_seconds: float = Field(
+        default=90.0, validation_alias="AUDIO_API_TIMEOUT_SECONDS", gt=0
+    )
+    audio_api_fallback_to_whisper: bool = Field(
+        default=True, validation_alias="AUDIO_API_FALLBACK_TO_WHISPER"
+    )
+
+
 class NecModelSettings(BaseSettings):
     nec_skip_model_load: bool = Field(
         default=False, validation_alias="NEC_SKIP_MODEL_LOAD"
@@ -122,6 +141,7 @@ class Settings(
     AppSettings,
     DatabaseSettings,
     StorageSettings,
+    AsrSettings,
     NecModelSettings,
     LoggingSettings,
 ):
