@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Check, FileAudio, LoaderCircle, Mic, RotateCcw, Square, Upload, Volume2, X } from 'lucide-vue-next'
 import { apiUrl } from '@/api/http'
 import { listExamples, rerunCorrection, submitAudio, submitExample } from '@/api/nec'
+import type { AsrProvider } from '@/api/nec'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import type { Correction, Example } from '@/types/api'
@@ -17,9 +18,11 @@ const dragActive = ref(false)
 const recorder = ref<MediaRecorder | null>(null)
 const stream = ref<MediaStream | null>(null)
 const chunks: Blob[] = []
+const asrProvider = ref<AsrProvider>('audio_api')
 
 const changed = computed(() => result.value && result.value.asr_text !== result.value.corrected_text)
 const timingEntries = computed(() => result.value ? Object.entries(result.value.timings).filter(([key]) => key !== 'total_ms') : [])
+const providerLabel = (provider: string) => provider === 'audio_api' ? 'Qwen-ASR' : provider === 'local_whisper' ? '内置 Whisper' : '手动文本'
 
 onMounted(async () => {
   try { examples.value = await listExamples() } catch { examples.value = [] }
@@ -39,7 +42,7 @@ async function run(action: () => Promise<Correction>) {
 }
 
 async function upload(file: File) {
-  await run(() => submitAudio(file, file.name, 'upload'))
+  await run(() => submitAudio(file, file.name, 'upload', asrProvider.value))
 }
 
 async function startRecording() {
@@ -60,7 +63,7 @@ async function startRecording() {
     recorder.value.onstop = () => {
       const blob = new Blob(chunks, { type: recorder.value?.mimeType || 'audio/webm' })
       stream.value?.getTracks().forEach((track) => track.stop())
-      run(() => submitAudio(blob, 'recording.webm', 'mic'))
+      run(() => submitAudio(blob, 'recording.webm', 'mic', asrProvider.value))
     }
     recorder.value.start()
     recording.value = true
@@ -91,13 +94,20 @@ function rerun() {
 <template>
   <div class="space-y-5">
     <div class="section-heading">
-      <div><h1>命名实体纠错</h1><p>真实语音经过 Whisper 转写、SS 候选检索与 GL 错误片段判断。</p></div>
+      <div><h1>命名实体纠错</h1><p>真实语音经过所选 ASR 转写、SS 候选检索与 GL 错误片段判断。</p></div>
       <Badge v-if="result" tone="info">{{ result.duration_seconds.toFixed(1) }} 秒音频 · {{ result.timings.total_ms?.toFixed(0) }} ms</Badge>
     </div>
 
     <div class="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,.9fr)]">
       <section class="panel p-4">
-        <div class="mb-3 flex items-center justify-between"><h2 class="panel-title">语音输入</h2><span class="text-xs text-muted-foreground">WAV · MP3 · M4A · WebM</span></div>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="panel-title">语音输入</h2>
+          <div class="segmented-control" aria-label="ASR 模型选择">
+            <button type="button" class="segmented-option" :class="asrProvider === 'audio_api' && 'segmented-option-active'" :aria-pressed="asrProvider === 'audio_api'" :disabled="loading || recording" @click="asrProvider = 'audio_api'">Qwen-ASR</button>
+            <button type="button" class="segmented-option" :class="asrProvider === 'local_whisper' && 'segmented-option-active'" :aria-pressed="asrProvider === 'local_whisper'" :disabled="loading || recording" @click="asrProvider = 'local_whisper'">内置 Whisper</button>
+          </div>
+        </div>
+        <div class="mb-3 text-right text-xs text-muted-foreground">WAV · MP3 · M4A · WebM</div>
         <div class="grid gap-3 sm:grid-cols-2">
           <button type="button" class="capture-action" :class="recording && 'capture-action-recording'" :disabled="loading" @click="recording ? stopRecording() : startRecording()">
             <span class="capture-icon"><Square v-if="recording" class="h-5 w-5 fill-current" /><Mic v-else class="h-5 w-5" /></span>
@@ -113,7 +123,7 @@ function rerun() {
         <div v-if="examples.length" class="mt-5 border-t pt-4">
           <div class="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><FileAudio class="h-4 w-4" />预置案例</div>
           <div class="grid gap-2 md:grid-cols-2">
-            <button v-for="example in examples" :key="example.id" type="button" class="example-row" :disabled="loading" @click="run(() => submitExample(example.id))">
+            <button v-for="example in examples" :key="example.id" type="button" class="example-row" :disabled="loading" @click="run(() => submitExample(example.id, asrProvider))">
               <span class="min-w-0"><strong>{{ example.title }}</strong><small>{{ example.note || example.utterance_id }}</small></span>
               <Volume2 class="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
@@ -127,7 +137,7 @@ function rerun() {
         <div v-else class="w-full space-y-3">
           <div class="flex items-center justify-between"><h2 class="panel-title">处理链路</h2><Badge :tone="changed ? 'success' : 'neutral'">{{ changed ? '已纠错' : '无需修改' }}</Badge></div>
           <div class="pipeline">
-            <div><span>1</span><strong>ASR</strong><small>{{ result.asr_provider }} · {{ result.timings.transcribe_ms?.toFixed(0) || '—' }} ms</small></div>
+            <div><span>1</span><strong>ASR</strong><small>{{ providerLabel(result.asr_provider) }} · {{ result.timings.transcribe_ms?.toFixed(0) || '—' }} ms</small></div>
             <i></i><div><span>2</span><strong>SS 检索</strong><small>{{ result.timings.search_ms?.toFixed(0) || '—' }} ms</small></div>
             <i></i><div><span>3</span><strong>GL 标注</strong><small>{{ result.timings.label_ms?.toFixed(0) || '—' }} ms</small></div>
           </div>
@@ -141,7 +151,7 @@ function rerun() {
       <section class="panel overflow-hidden">
         <div class="border-b p-4"><div class="flex flex-wrap items-center justify-between gap-3"><h2 class="panel-title">识别与纠错结果</h2><Button size="sm" variant="secondary" :disabled="loading || editedText.trim() === result.asr_text" @click="rerun"><RotateCcw class="h-3.5 w-3.5" />重新运行 SS + GL</Button></div></div>
         <div class="grid divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <div class="p-4"><label class="result-label">ASR 原文（{{ result.asr_provider }}，可编辑）</label><textarea v-model="editedText" class="result-editor" rows="4" /></div>
+          <div class="p-4"><label class="result-label">ASR 原文（{{ providerLabel(result.asr_provider) }}，可编辑）</label><textarea v-model="editedText" class="result-editor" rows="4" /></div>
           <div class="p-4"><label class="result-label">纠错结果</label><div class="result-copy" :class="changed && 'result-copy-changed'">{{ result.corrected_text }}</div></div>
         </div>
       </section>

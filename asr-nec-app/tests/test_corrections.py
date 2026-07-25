@@ -41,7 +41,10 @@ class FakeEngine:
 
 
 class FakeTranscriber:
+    calls = 0
+
     def transcribe(self, audio_path, conversation_id):
+        self.calls += 1
         return TranscriptionResult("我想配点太子参调理", 8.5)
 
 
@@ -143,3 +146,16 @@ def test_audio_api_failure_falls_back_to_whisper(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["asr_provider"] == "local_whisper"
     assert response.json()["asr_text"] == "我想配点太子参调理"
+
+
+def test_local_whisper_selection_skips_audio_api(client: TestClient) -> None:
+    transcriber = FakeTranscriber()
+    client.app.dependency_overrides[get_audio_transcriber] = lambda: transcriber
+    response = client.post(
+        "/api/corrections",
+        files={"file": ("sample.wav", b"fake-wav-bytes", "audio/wav")},
+        data={"asr_provider": "local_whisper"},
+    )
+    assert response.status_code == 200
+    assert response.json()["asr_provider"] == "local_whisper"
+    assert transcriber.calls == 0

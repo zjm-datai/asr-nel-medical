@@ -5,7 +5,6 @@ import AppShell from '@/components/layout/AppShell.vue'
 import type { PageKey } from '@/constants/navigation'
 import DemoView from '@/views/DemoView.vue'
 import HistoryView from '@/views/HistoryView.vue'
-import MetricsView from '@/views/MetricsView.vue'
 import type { Health } from '@/types/api'
 
 const activePage = ref<PageKey>('demo')
@@ -19,7 +18,6 @@ onMounted(async () => {
 <template>
   <AppShell v-model:active-page="activePage" :health="health">
     <DemoView v-if="activePage === 'demo'" />
-    <MetricsView v-else-if="activePage === 'metrics'" />
     <HistoryView v-else />
   </AppShell>
 </template>

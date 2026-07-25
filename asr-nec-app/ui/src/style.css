@@ -60,6 +60,11 @@ button:disabled, input:disabled { cursor: not-allowed; }
 .icon-link { display: inline-flex; height: 34px; width: 34px; align-items: center; justify-content: center; border-radius: 7px; color: #64717a; }
 .icon-link:hover { background: #eef2f3; color: #17202f; }
 .error-text { border: 1px solid #f0b8b3; border-radius: 7px; background: #fff0ef; padding: 10px 12px; color: #a52f27; font-size: 13px; }
+.segmented-control { display: inline-grid; grid-template-columns: repeat(2, minmax(104px, 1fr)); border: 1px solid var(--border); border-radius: 7px; background: #f3f6f5; padding: 3px; }
+.segmented-option { min-height: 30px; border-radius: 5px; padding: 4px 10px; color: var(--muted-foreground); font-size: 12px; font-weight: 700; }
+.segmented-option:hover:not(:disabled) { color: #176b57; }
+.segmented-option-active { background: #fff; color: #176b57; box-shadow: 0 1px 2px rgb(16 24 40 / .1); }
+.segmented-option:disabled { cursor: not-allowed; opacity: .6; }
 .capture-action { display: flex; min-height: 92px; align-items: center; gap: 13px; border: 1px dashed #a9b8b4; border-radius: 7px; background: #fbfcfc; padding: 16px; text-align: left; transition: border-color 120ms ease, background-color 120ms ease; }
 .capture-action:hover, .capture-action-active { border-color: #176b57; background: #f2faf7; }
 .capture-action-recording { border-color: #c83b31; background: #fff3f2; color: #a52f27; }

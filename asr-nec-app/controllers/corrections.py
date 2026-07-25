@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -44,6 +45,7 @@ def create_correction(
     file: UploadFile | None = File(None),
     example_id: str | None = Form(None),
     source: str | None = Form(None),
+    asr_provider: Literal["audio_api", "local_whisper"] = Form("audio_api"),
     top_k: int = Form(5, ge=1, le=10),
     threshold: float = Form(0.3, ge=0.0, le=1.0),
     session: Session = Depends(get_session),
@@ -65,6 +67,7 @@ def create_correction(
         filename=filename,
         example_id=example_id,
         source="mic" if source == "mic" else "upload",
+        requested_asr_provider=asr_provider,
         top_k=top_k,
         threshold=threshold,
     )

@@ -28,6 +28,7 @@ def run_correction(
     filename: str,
     example_id: str | None,
     source: str,
+    requested_asr_provider: str,
     top_k: int,
     threshold: float,
 ) -> Correction:
@@ -56,19 +57,20 @@ def run_correction(
     asr_text: str | None = None
     asr_provider = "local_whisper"
     external_asr_ms: float | None = None
-    try:
-        transcription = transcriber.transcribe(audio_path, correction_id)
-        if transcription is not None:
-            asr_text = transcription.text
-            external_asr_ms = transcription.elapsed_ms
-            asr_provider = "audio_api"
-    except Exception as exc:
-        logger.exception("audio_api transcription failed; falling back to Whisper")
-        if not settings.audio_api_fallback_to_whisper:
-            stored_path.unlink(missing_ok=True)
-            raise HTTPException(
-                status_code=503, detail=f"audio_api transcription failed: {exc}"
-            ) from exc
+    if requested_asr_provider == "audio_api":
+        try:
+            transcription = transcriber.transcribe(audio_path, correction_id)
+            if transcription is not None:
+                asr_text = transcription.text
+                external_asr_ms = transcription.elapsed_ms
+                asr_provider = "audio_api"
+        except Exception as exc:
+            logger.exception("audio_api transcription failed; falling back to Whisper")
+            if not settings.audio_api_fallback_to_whisper:
+                stored_path.unlink(missing_ok=True)
+                raise HTTPException(
+                    status_code=503, detail=f"audio_api transcription failed: {exc}"
+                ) from exc
 
     try:
         result = engine.correct_audio(
