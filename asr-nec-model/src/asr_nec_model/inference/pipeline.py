@@ -7,7 +7,7 @@ import torch
 from ..data.types import EntitySpeech
 from ..models.labeler import GenerativeLabeler
 from ..models.searcher import SpeechSearcher
-from ..utils.text import EMPTY
+from .corrections import apply_candidate_corrections
 
 
 @torch.no_grad()
@@ -40,12 +40,11 @@ def apply_correction(
     candidates: Sequence[str],
     generated_label: str,
 ) -> str:
-    label = generated_label.strip()
-    if not label or label == EMPTY or label.startswith(EMPTY):
-        return asr_text
     if len(candidates) != 1:
         return asr_text
-    return asr_text.replace(label, candidates[0], 1)
+    return apply_candidate_corrections(
+        asr_text, [(candidates[0], generated_label)]
+    )[0]
 
 
 @torch.no_grad()
@@ -78,9 +77,8 @@ def correct_one_utterance(
     if len(candidate_names) == 1:
         return apply_correction(asr_text, candidate_names, generated_label)
 
-    corrected = asr_text
-    for entity in candidate_names:
-        span = labeler.generate_label(features, [entity], corrected)
-        corrected = apply_correction(corrected, [entity], span)
-    return corrected
-
+    generated = [
+        (entity, labeler.generate_label(features, [entity], asr_text))
+        for entity in candidate_names
+    ]
+    return apply_candidate_corrections(asr_text, generated)[0]

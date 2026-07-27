@@ -103,8 +103,8 @@ def transcribe_batch_transformers(
     )
     with torch.inference_mode():
         generated = model.generate(
-            inputs.input_features,
-            attention_mask=inputs.attention_mask,
+            inputs.input_features.to(model.device),
+            attention_mask=inputs.attention_mask.to(model.device),
             language="zh",
             task="transcribe",
             max_new_tokens=128,
@@ -123,7 +123,7 @@ def transcribe_batch_openai(batch: list[dict], audio_root: Path, model: Any, mod
             audio,
             language="zh",
             task="transcribe",
-            fp16=False,
+            fp16=next(model.parameters()).device.type == "cuda",
             temperature=0,
             condition_on_previous_text=False,
             verbose=False,
@@ -253,16 +253,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Transcribe and evaluate the TTS pilot with the target Whisper model.")
     parser.add_argument("--data-dir", type=Path, default=WORKSPACE_ROOT / "data" / "speech_searcher")
     parser.add_argument("--pilot-dir", type=Path, default=WORKSPACE_ROOT / "data" / "speech_searcher" / "audio_pilot")
+    parser.add_argument("--manifest-name", default="pilot_manifest.jsonl")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_ASR_OUTPUT)
     parser.add_argument("--backend", choices=("openai", "transformers"), default="openai")
     parser.add_argument("--model", default="base")
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--holdout-manifest", type=Path)
+    parser.add_argument("--split", choices=("train", "dev", "test"), default="test")
+    parser.add_argument("--only-split", choices=("train", "dev", "test"))
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
     if args.limit is not None and args.output_dir.resolve() == DEFAULT_ASR_OUTPUT.resolve():
         raise ValueError("--limit is a smoke-test option and requires a separate --output-dir")
 
-    pilot_rows = [row for row in read_jsonl(args.pilot_dir / "pilot_manifest.jsonl") if row["kind"] == "utterance"]
+    pilot_rows = [row for row in read_jsonl(args.pilot_dir / args.manifest_name) if row["kind"] == "utterance"]
+    if args.only_split:
+        pilot_rows = [row for row in pilot_rows if row["split"] == args.only_split]
+    if args.holdout_manifest:
+        holdout = json.loads(args.holdout_manifest.read_text(encoding="utf-8"))
+        selected_ids = set(holdout["evaluation_utterance_ids"][args.split])
+        pilot_rows = [row for row in pilot_rows if row["source_id"] in selected_ids]
     pilot_rows.sort(key=lambda row: row["source_id"])
     if args.limit is not None:
         pilot_rows = pilot_rows[: args.limit]
@@ -278,16 +289,16 @@ def main() -> None:
     processor = None
     model = None
     if pending:
-        print(f"loading {model_name} on CPU", flush=True)
+        print(f"loading {model_name} on {args.device}", flush=True)
         if args.backend == "openai":
             import whisper
 
-            model = whisper.load_model(args.model, device="cpu")
+            model = whisper.load_model(args.model, device=args.device)
         else:
             from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
             processor = WhisperProcessor.from_pretrained(args.model)
-            model = WhisperForConditionalGeneration.from_pretrained(args.model)
+            model = WhisperForConditionalGeneration.from_pretrained(args.model).to(args.device)
             model.eval()
     for start in range(0, len(pending), args.batch_size):
         batch = pending[start : start + args.batch_size]

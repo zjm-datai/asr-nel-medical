@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 from collections import defaultdict
@@ -16,6 +17,14 @@ from asr_nec_model.models.searcher import EncodedSpeechSearcher
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = REPO_ROOT.parent
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -128,6 +137,31 @@ def retrieval_metrics(pair_rows: list[dict], pair_scores: dict[str, float], thre
     return metrics
 
 
+def select_incremental_rows(rows: list[dict], new_ids: set[str], train_ids: set[str], seed: int) -> list[dict]:
+    """Build a deterministic 25/75 new/old replay set with balanced labels."""
+    rng = random.Random(seed)
+    groups: dict[tuple[str, int], list[dict]] = defaultdict(list)
+    for row in rows:
+        group = "new" if row["entity_id"] in new_ids and row["utterance_id"] in train_ids else "old"
+        groups[(group, int(row["label"]))].append(row)
+    for values in groups.values():
+        rng.shuffle(values)
+    old_count = sum(len(values) for (group, _), values in groups.items() if group == "old")
+    new_count = sum(len(values) for (group, _), values in groups.items() if group == "new")
+    if not new_count:
+        raise ValueError("incremental training requested but no new-entity train rows were found")
+    target_new = min(new_count, max(1, round((old_count + new_count) * 0.25)))
+    target_old = min(old_count, max(1, round(target_new * 3)))
+    selected: list[dict] = []
+    for group, target in (("new", target_new), ("old", target_old)):
+        per_label = max(1, target // 2)
+        for label in (0, 1):
+            values = groups[(group, label)]
+            selected.extend(values[:per_label])
+    rng.shuffle(selected)
+    return selected
+
+
 def evaluate(
     model: EncodedSpeechSearcher,
     loader: DataLoader,
@@ -175,6 +209,8 @@ def main() -> None:
     parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--seed", type=int, default=20260723)
     parser.add_argument("--resume", type=Path)
+    parser.add_argument("--holdout-manifest", type=Path)
+    parser.add_argument("--incremental", action="store_true", help="Replay old rows plus holdout train-split new rows at a 75/25 ratio")
     parser.add_argument("--max-train-pairs", type=int, help="Smoke-test only; omit for real training")
     args = parser.parse_args()
 
@@ -192,9 +228,31 @@ def main() -> None:
         row["audio_path"]: args.feature_dir / row["feature_path"] for row in feature_rows
     }
     train_rows = read_jsonl(args.data_dir / "ss_train_pairs.jsonl")
+    holdout = (
+        json.loads(args.holdout_manifest.read_text(encoding="utf-8"))
+        if args.holdout_manifest
+        else {"new_entity_ids": [], "excluded_training_utterance_ids": []}
+    )
+    excluded_entities = set(holdout.get("new_entity_ids", []))
+    excluded_utterances = set(holdout.get("excluded_training_utterance_ids", []))
+    base_train_rows = [
+        row
+        for row in train_rows
+        if row["entity_id"] not in excluded_entities and row["utterance_id"] not in excluded_utterances
+    ]
+    if args.incremental:
+        train_ids = set(holdout.get("evaluation_utterance_ids", {}).get("train", []))
+        train_rows = select_incremental_rows(read_jsonl(args.data_dir / "ss_train_pairs.jsonl"), excluded_entities, train_ids, args.seed)
+    else:
+        train_rows = base_train_rows
     if args.max_train_pairs:
         train_rows = train_rows[: args.max_train_pairs]
     eval_rows = read_jsonl(args.data_dir / "ss_eval_pairs.jsonl")
+    eval_rows = [
+        row
+        for row in eval_rows
+        if row["entity_id"] not in excluded_entities and row["utterance_id"] not in excluded_utterances
+    ]
     dev_rows = [row for row in eval_rows if row["split"] == "dev"]
     test_rows = [row for row in eval_rows if row["split"] == "test"]
     if not dev_rows or not test_rows:
@@ -245,7 +303,7 @@ def main() -> None:
         model.load_state_dict(checkpoint["model_state"])
         optimizer.load_state_dict(checkpoint["optimizer_state"])
         start_epoch = checkpoint["epoch"] + 1
-        best_recall = checkpoint.get("best_dev_recall_at_5", -1.0)
+        best_recall = -1.0 if not (args.output_dir / "best.pt").is_file() else checkpoint.get("best_dev_recall_at_5", -1.0)
         history = checkpoint.get("history", [])
 
     for epoch in range(start_epoch, args.epochs + 1):
@@ -280,6 +338,8 @@ def main() -> None:
             "model_config": model.config,
             "training_args": vars(args),
             "best_dev_recall_at_5": max(best_recall, dev_recall),
+            "holdout_manifest_sha256": sha256_file(args.holdout_manifest) if args.holdout_manifest else None,
+            "excluded_entity_ids": sorted(excluded_entities),
             "history": history,
         }
         torch.save(checkpoint, args.output_dir / "last.pt")
@@ -315,6 +375,9 @@ def main() -> None:
         "best_epoch": best_checkpoint["epoch"],
         "history": history,
         "test_metrics": test_metrics,
+        "train_pair_count": len(train_rows),
+        "excluded_entity_count": len(excluded_entities),
+        "excluded_utterance_count": len(excluded_utterances),
     }
     (args.output_dir / "metrics.json").write_text(
         json.dumps(final_metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

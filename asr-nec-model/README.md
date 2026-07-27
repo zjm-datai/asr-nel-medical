@@ -64,3 +64,10 @@ DATASET_MODE=full SEED=20260724 bash scripts/run_ss_training.sh
 
 Full features are cached under `../data/speech_searcher/ss_features_full`, and
 checkpoints are written to `../runs/ss_full_seed_<seed>`.
+
+## Entity feature bank
+
+The application loads all projected SS entity views from
+`../data/speech_searcher/ss_features_full`. Adding an entity only requires
+generating its TTS audio and Whisper/SS feature files and updating the existing
+feature manifest; inference exhaustively scores every view with SS.

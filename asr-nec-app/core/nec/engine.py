@@ -27,9 +27,6 @@ from configs.base import Settings
 
 logger = logging.getLogger("nec.engine")
 
-EMPTY = "<empty>"
-
-
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [
         json.loads(line)
@@ -99,10 +96,10 @@ class NecEngine:
         self.searcher.load_state_dict(ss_checkpoint["model_state"])
         self.searcher.eval()
 
-        self._load_entity_store()
+        self._load_feature_bank()
         self.loaded = True
 
-    def _load_entity_store(self) -> None:
+    def _load_feature_bank(self) -> None:
         torch = self._torch
         from torch.nn.utils.rnn import pad_sequence
 
@@ -218,20 +215,19 @@ class NecEngine:
         timings["search_ms"] = _elapsed_ms(started)
 
         started = time.perf_counter()
-        corrected_text = asr_text
+        from asr_nec_model.inference.corrections import apply_candidate_corrections
+
+        generated: list[tuple[str, str]] = []
         for candidate in candidates:
-            prompt = f"{candidate['surface_text']} <EC> {corrected_text}"
+            prompt = f"{candidate['surface_text']} <EC> {asr_text}"
             prediction = self._gl_generate(gl_feature, prompt)
             candidate["gl_prediction"] = prediction
-            if prediction and prediction != EMPTY:
-                candidate["action"] = "replace"
-                if prediction in corrected_text:
-                    corrected_text = corrected_text.replace(
-                        prediction, candidate["surface_text"], 1
-                    )
-                    candidate["applied"] = True
-            else:
-                candidate["action"] = "reject"
+            generated.append((candidate["surface_text"], prediction))
+        corrected_text, correction_decisions = apply_candidate_corrections(asr_text, generated)
+        for candidate, decision in zip(candidates, correction_decisions, strict=True):
+            candidate["action"] = "replace" if decision.applied else "reject"
+            candidate["applied"] = decision.applied
+            candidate["decision_reason"] = decision.reason
         timings["label_ms"] = _elapsed_ms(started)
         timings["total_ms"] = round(sum(timings.values()), 1)
 
@@ -247,7 +243,6 @@ class NecEngine:
         self, utterance_feature: Any, top_k: int, threshold: float
     ) -> list[dict[str, Any]]:
         torch = self._torch
-        from torch.nn.utils.rnn import pad_sequence
 
         amp_enabled = self.device.startswith("cuda")
         lengths = torch.tensor([utterance_feature.shape[0]], device=self.device)
@@ -260,11 +255,31 @@ class NecEngine:
         keep = self.searcher.projected_lengths(lengths).cpu().tolist()[0]
         utterance = projected[0][:keep].detach()
 
+        selected_views = [
+            (surface_id, {"view_id": f"legacy_{index}"}, feature)
+            for index, (surface_id, feature) in enumerate(
+                zip(self._view_surface_ids, self._view_features, strict=True)
+            )
+        ]
+        return self._rerank(utterance, selected_views, top_k, threshold)
+
+    def _rerank(
+        self,
+        utterance: Any,
+        selected_views: list[tuple[str, dict[str, Any], Any]],
+        top_k: int,
+        threshold: float,
+    ) -> list[dict[str, Any]]:
+        torch = self._torch
+        from torch.nn.utils.rnn import pad_sequence
+
         surface_scores: dict[str, list[float]] = {}
         batch_size = 96
-        for start in range(0, len(self._view_features), batch_size):
-            batch_features = self._view_features[start : start + batch_size]
-            batch_surface_ids = self._view_surface_ids[start : start + batch_size]
+        amp_enabled = self.device.startswith("cuda")
+        for start in range(0, len(selected_views), batch_size):
+            batch = selected_views[start : start + batch_size]
+            batch_surface_ids = [item[0] for item in batch]
+            batch_features = [item[2] for item in batch]
             entity_lengths = torch.tensor(
                 [feature.shape[0] for feature in batch_features], device=self.device
             )
